@@ -1,4 +1,5 @@
 import * as grpc from "@grpc/grpc-js";
+import * as core from "@actions/core";
 import {
   BasicTracerProvider,
   SimpleSpanProcessor,
@@ -50,7 +51,7 @@ export function createTracerProvider(
   const serviceVersion = workflowRunJobs.workflowRun.head_sha;
   
   diag.setLogger(new DiagConsoleLogger(), DiagLogLevel.ALL);
-  console.log('test bruno');
+  core.info('test bruno');
 
   const provider = new BasicTracerProvider({
     resource: new Resource({
