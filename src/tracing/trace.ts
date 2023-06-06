@@ -5,7 +5,7 @@ import {
   ConsoleSpanExporter,
   SpanExporter,
 } from "@opentelemetry/sdk-trace-base";
-import { diag } from "@opentelemetry/api";
+import { DiagConsoleLogger, DiagLogLevel, diag } from "@opentelemetry/api";
 import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-grpc";
 import { SemanticResourceAttributes } from "@opentelemetry/semantic-conventions";
 import { WorkflowRunJobs } from "../github";
@@ -50,6 +50,7 @@ export function createTracerProvider(
   const serviceVersion = workflowRunJobs.workflowRun.head_sha;
   
   diag.setLogger(new DiagConsoleLogger(), DiagLogLevel.ALL);
+  console.log('test bruno');
 
   const provider = new BasicTracerProvider({
     resource: new Resource({
