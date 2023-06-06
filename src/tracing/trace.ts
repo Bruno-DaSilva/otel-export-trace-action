@@ -18,7 +18,7 @@ type StringDict = { [key: string]: string };
 function stringToHeader(value: string): StringDict {
   const pairs = value.split(",");
   return pairs.reduce((result, item) => {
-    const [key, value] = item.split("=");
+    const [key, value] = item.split(": ");
     if (key && value) {
       return {
         ...result,
@@ -70,7 +70,7 @@ export function createTracerProvider(
       headers: stringToHeader(otlpHeaders),
     });
   }
-  core.debug(JSON.stringify(stringToHeader(otlpHeaders)));
+  // core.debug(JSON.stringify(stringToHeader(otlpHeaders)));
 
   provider.addSpanProcessor(new SimpleSpanProcessor(exporter));
   provider.register();

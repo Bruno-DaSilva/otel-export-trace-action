@@ -772,7 +772,7 @@ const OTEL_CONSOLE_ONLY = process.env.OTEL_CONSOLE_ONLY === "true";
 function stringToHeader(value) {
     const pairs = value.split(",");
     return pairs.reduce((result, item) => {
-        const [key, value] = item.split("=");
+        const [key, value] = item.split(": ");
         if (key && value) {
             return {
                 ...result,
@@ -813,7 +813,7 @@ function createTracerProvider(otlpEndpoint, otlpHeaders, workflowRunJobs, otelSe
             headers: stringToHeader(otlpHeaders),
         });
     }
-    core.debug(JSON.stringify(stringToHeader(otlpHeaders)));
+    // core.debug(JSON.stringify(stringToHeader(otlpHeaders)));
     provider.addSpanProcessor(new sdk_trace_base_1.SimpleSpanProcessor(exporter));
     provider.register();
     return provider;
