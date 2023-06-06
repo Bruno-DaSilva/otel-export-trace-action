@@ -49,9 +49,9 @@ export function createTracerProvider(
   ].join("/");
   const serviceNamespace = workflowRunJobs.workflowRun.repository.full_name;
   const serviceVersion = workflowRunJobs.workflowRun.head_sha;
-  
+
   diag.setLogger(new DiagConsoleLogger(), DiagLogLevel.ALL);
-  core.info('test bruno');
+  core.info("test bruno");
 
   const provider = new BasicTracerProvider({
     resource: new Resource({
