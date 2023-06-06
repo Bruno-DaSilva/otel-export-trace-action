@@ -1,11 +1,12 @@
-import * as grpc from "@grpc/grpc-js";
+import * as core from "@actions/core";
 import {
   BasicTracerProvider,
   SimpleSpanProcessor,
   ConsoleSpanExporter,
   SpanExporter,
 } from "@opentelemetry/sdk-trace-base";
-import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-grpc";
+import { DiagConsoleLogger, DiagLogLevel, diag } from "@opentelemetry/api";
+import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-proto";
 import { SemanticResourceAttributes } from "@opentelemetry/semantic-conventions";
 import { WorkflowRunJobs } from "../github";
 import { Resource } from "@opentelemetry/resources";
@@ -48,6 +49,10 @@ export function createTracerProvider(
   const serviceNamespace = workflowRunJobs.workflowRun.repository.full_name;
   const serviceVersion = workflowRunJobs.workflowRun.head_sha;
 
+  if (core.isDebug()) {
+    diag.setLogger(new DiagConsoleLogger(), DiagLogLevel.ALL);
+  }
+
   const provider = new BasicTracerProvider({
     resource: new Resource({
       [SemanticResourceAttributes.SERVICE_NAME]: serviceName,
@@ -62,8 +67,7 @@ export function createTracerProvider(
   if (!OTEL_CONSOLE_ONLY) {
     exporter = new OTLPTraceExporter({
       url: otlpEndpoint,
-      credentials: grpc.credentials.createSsl(),
-      metadata: grpc.Metadata.fromHttp2Headers(stringToHeader(otlpHeaders)),
+      headers: stringToHeader(otlpHeaders),
     });
   }
 
