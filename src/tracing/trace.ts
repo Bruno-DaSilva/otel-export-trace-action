@@ -70,6 +70,7 @@ export function createTracerProvider(
       headers: stringToHeader(otlpHeaders),
     });
   }
+  core.debug(JSON.stringify(stringToHeader(otlpHeaders)));
 
   provider.addSpanProcessor(new SimpleSpanProcessor(exporter));
   provider.register();

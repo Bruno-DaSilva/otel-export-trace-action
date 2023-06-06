@@ -813,6 +813,7 @@ function createTracerProvider(otlpEndpoint, otlpHeaders, workflowRunJobs, otelSe
             headers: stringToHeader(otlpHeaders),
         });
     }
+    core.debug(JSON.stringify(stringToHeader(otlpHeaders)));
     provider.addSpanProcessor(new sdk_trace_base_1.SimpleSpanProcessor(exporter));
     provider.register();
     return provider;
