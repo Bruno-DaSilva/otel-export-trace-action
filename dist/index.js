@@ -771,7 +771,9 @@ var __importStar = (this && this.__importStar) || function (mod) {
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.createTracerProvider = void 0;
 const grpc = __importStar(__nccwpck_require__(7025));
+const core = __importStar(__nccwpck_require__(42186));
 const sdk_trace_base_1 = __nccwpck_require__(29253);
+const api_1 = __nccwpck_require__(65163);
 const exporter_trace_otlp_grpc_1 = __nccwpck_require__(60160);
 const semantic_conventions_1 = __nccwpck_require__(67275);
 const resources_1 = __nccwpck_require__(3871);
@@ -802,6 +804,8 @@ function createTracerProvider(otlpEndpoint, otlpHeaders, workflowRunJobs, otelSe
     ].join("/");
     const serviceNamespace = workflowRunJobs.workflowRun.repository.full_name;
     const serviceVersion = workflowRunJobs.workflowRun.head_sha;
+    api_1.diag.setLogger(new api_1.DiagConsoleLogger(), api_1.DiagLogLevel.ALL);
+    core.info("test bruno");
     const provider = new sdk_trace_base_1.BasicTracerProvider({
         resource: new resources_1.Resource({
             [semantic_conventions_1.SemanticResourceAttributes.SERVICE_NAME]: serviceName,
