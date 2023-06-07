@@ -768,6 +768,7 @@ const api_1 = __nccwpck_require__(65163);
 const exporter_trace_otlp_proto_1 = __nccwpck_require__(97859);
 const semantic_conventions_1 = __nccwpck_require__(67275);
 const resources_1 = __nccwpck_require__(3871);
+const core_1 = __nccwpck_require__(89736);
 const OTEL_CONSOLE_ONLY = process.env.OTEL_CONSOLE_ONLY === "true";
 function stringToHeader(value) {
     const pairs = value.split(",");
@@ -798,6 +799,9 @@ function createTracerProvider(otlpEndpoint, otlpHeaders, workflowRunJobs, otelSe
     if (core.isDebug()) {
         api_1.diag.setLogger(new api_1.DiagConsoleLogger(), api_1.DiagLogLevel.ALL);
     }
+    else {
+        api_1.diag.setLogger(new api_1.DiagConsoleLogger(), api_1.DiagLogLevel.INFO);
+    }
     const provider = new sdk_trace_base_1.BasicTracerProvider({
         resource: new resources_1.Resource({
             [semantic_conventions_1.SemanticResourceAttributes.SERVICE_NAME]: serviceName,
@@ -814,6 +818,16 @@ function createTracerProvider(otlpEndpoint, otlpHeaders, workflowRunJobs, otelSe
         });
     }
     // core.debug(JSON.stringify(stringToHeader(otlpHeaders)));
+    (0, core_1.setGlobalErrorHandler)((ex) => {
+        var _a;
+        (0, core_1.loggingErrorHandler)()(ex);
+        if (typeof ex === "string") {
+            core.setFailed(ex);
+        }
+        else {
+            core.setFailed((_a = ex.message) !== null && _a !== void 0 ? _a : "no error message, check logs");
+        }
+    });
     provider.addSpanProcessor(new sdk_trace_base_1.SimpleSpanProcessor(exporter));
     provider.register();
     return provider;

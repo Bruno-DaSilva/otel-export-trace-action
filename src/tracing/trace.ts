@@ -5,11 +5,20 @@ import {
   ConsoleSpanExporter,
   SpanExporter,
 } from "@opentelemetry/sdk-trace-base";
-import { DiagConsoleLogger, DiagLogLevel, diag } from "@opentelemetry/api";
+import {
+  DiagConsoleLogger,
+  DiagLogLevel,
+  Exception,
+  diag,
+} from "@opentelemetry/api";
 import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-proto";
 import { SemanticResourceAttributes } from "@opentelemetry/semantic-conventions";
 import { WorkflowRunJobs } from "../github";
 import { Resource } from "@opentelemetry/resources";
+import {
+  setGlobalErrorHandler,
+  loggingErrorHandler,
+} from "@opentelemetry/core";
 
 const OTEL_CONSOLE_ONLY = process.env.OTEL_CONSOLE_ONLY === "true";
 
@@ -51,6 +60,8 @@ export function createTracerProvider(
 
   if (core.isDebug()) {
     diag.setLogger(new DiagConsoleLogger(), DiagLogLevel.ALL);
+  } else {
+    diag.setLogger(new DiagConsoleLogger(), DiagLogLevel.INFO);
   }
 
   const provider = new BasicTracerProvider({
@@ -71,6 +82,15 @@ export function createTracerProvider(
     });
   }
   // core.debug(JSON.stringify(stringToHeader(otlpHeaders)));
+
+  setGlobalErrorHandler((ex: Exception) => {
+    loggingErrorHandler()(ex);
+    if (typeof ex === "string") {
+      core.setFailed(ex);
+    } else {
+      core.setFailed(ex.message ?? "no error message, check logs");
+    }
+  });
 
   provider.addSpanProcessor(new SimpleSpanProcessor(exporter));
   provider.register();
