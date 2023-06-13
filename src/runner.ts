@@ -3,11 +3,14 @@ import * as core from "@actions/core";
 
 import { getWorkflowRunJobs } from "./github";
 import { createTracerProvider, traceWorkflowRunJobs } from "./tracing";
+import { getLogsForWorkflowRunJobs, exportLogsToLoki } from "./logging";
 
 export async function run() {
   const ghContext = github.context;
   const otlpEndpoint = core.getInput("otlpEndpoint");
   const otlpHeaders = core.getInput("otlpHeaders");
+  const lokiEndpoint = core.getInput("lokiEndpoint");
+  const lokiHeaders = core.getInput("lokiHeaders");
   const otelServiceName =
     core.getInput("otelServiceName") || process.env.OTEL_SERVICE_NAME || "";
   const runId = parseInt(core.getInput("runId") || `${ghContext.runId}`);
@@ -35,6 +38,16 @@ export async function run() {
       provider,
       workflowRunJobs,
     });
+
+    const lokiLogs = await getLogsForWorkflowRunJobs(
+      octokit,
+      ghContext.repo,
+      runId,
+      workflowRunJobs,
+      spanContext.traceId
+    );
+    await exportLogsToLoki(lokiEndpoint, lokiHeaders, lokiLogs);
+
     core.setOutput("traceId", spanContext.traceId);
   } finally {
     core.info("Shutdown Trace Provider");
