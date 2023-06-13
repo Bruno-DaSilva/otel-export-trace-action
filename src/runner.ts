@@ -39,6 +39,9 @@ export async function run() {
       workflowRunJobs,
     });
 
+    core.info(
+      `Loki Logs Workflow Run Jobs for ${runId} and export to ${lokiEndpoint}`
+    );
     const lokiLogs = await getLogsForWorkflowRunJobs(
       octokit,
       ghContext.repo,

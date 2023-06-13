@@ -397,6 +397,7 @@ async function run() {
             provider,
             workflowRunJobs,
         });
+        core.info(`Loki Logs Workflow Run Jobs for ${runId} and export to ${lokiEndpoint}`);
         const lokiLogs = await (0, logging_1.getLogsForWorkflowRunJobs)(octokit, ghContext.repo, runId, workflowRunJobs, spanContext.traceId);
         await (0, logging_1.exportLogsToLoki)(lokiEndpoint, lokiHeaders, lokiLogs);
         core.setOutput("traceId", spanContext.traceId);
