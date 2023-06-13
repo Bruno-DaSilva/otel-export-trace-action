@@ -62,7 +62,6 @@ export async function getLogsForWorkflowRunJobs(
         job_id: job.id,
       });
 
-    console.log(downloadLogsResponse.url);
     const response = await axios({
       method: "get",
       url: downloadLogsResponse.url,
@@ -73,7 +72,6 @@ export async function getLogsForWorkflowRunJobs(
     const logLines: string[] = [];
     if (typeof downloadedLogs === "string") {
       logLines.push(...downloadedLogs.split("\n"));
-      console.log(logLines);
     } else {
       core.setFailed(
         `Error parsing logs response, expected string but got ${typeof downloadedLogs}:`

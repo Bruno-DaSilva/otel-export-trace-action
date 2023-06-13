@@ -268,7 +268,6 @@ async function getLogsForWorkflowRunJobs(octokit, contextRepo, runId, workflowRu
             run_id: runId,
             job_id: job.id,
         });
-        console.log(downloadLogsResponse.url);
         const response = await (0, axios_1.default)({
             method: "get",
             url: downloadLogsResponse.url,
@@ -278,7 +277,6 @@ async function getLogsForWorkflowRunJobs(octokit, contextRepo, runId, workflowRu
         const logLines = [];
         if (typeof downloadedLogs === "string") {
             logLines.push(...downloadedLogs.split("\n"));
-            console.log(logLines);
         }
         else {
             core.setFailed(`Error parsing logs response, expected string but got ${typeof downloadedLogs}:`);
