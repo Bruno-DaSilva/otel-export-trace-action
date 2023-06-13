@@ -55,6 +55,7 @@ export async function getLogsForWorkflowRunJobs(
 ) {
   const logData: LokiRequestBody[] = [];
   for (const job of workflowRunJobs.jobs) {
+    core.debug(`Generating URL for logs on ${runId} and ${job.id}`);
     const downloadLogsResponse =
       await octokit.rest.actions.downloadJobLogsForWorkflowRun({
         ...contextRepo,
@@ -62,6 +63,7 @@ export async function getLogsForWorkflowRunJobs(
         job_id: job.id,
       });
 
+    core.debug(`Downloadings logs from ${downloadLogsResponse.url}`);
     const response = await axios({
       method: "get",
       url: downloadLogsResponse.url,
@@ -69,6 +71,7 @@ export async function getLogsForWorkflowRunJobs(
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
     const downloadedLogs = response.data;
 
+    core.debug(`Processing logs for ${runId} and ${job.id}`);
     const logLines: string[] = [];
     if (typeof downloadedLogs === "string") {
       logLines.push(...downloadedLogs.split("\n"));
@@ -107,6 +110,7 @@ export async function getLogsForWorkflowRunJobs(
       values: parsedLogLines,
     };
     logData.push(lokiLog);
+    core.debug(`Finished processing logs for ${runId} and ${job.id}`);
   }
 
   return logData;

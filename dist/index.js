@@ -263,17 +263,20 @@ exports.getWorkflowRunJobsForLogging = getWorkflowRunJobsForLogging;
 async function getLogsForWorkflowRunJobs(octokit, contextRepo, runId, workflowRunJobs, traceId) {
     const logData = [];
     for (const job of workflowRunJobs.jobs) {
+        core.debug(`Generating URL for logs on ${runId} and ${job.id}`);
         const downloadLogsResponse = await octokit.rest.actions.downloadJobLogsForWorkflowRun({
             ...contextRepo,
             run_id: runId,
             job_id: job.id,
         });
+        core.debug(`Downloadings logs from ${downloadLogsResponse.url}`);
         const response = await (0, axios_1.default)({
             method: "get",
             url: downloadLogsResponse.url,
         });
         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         const downloadedLogs = response.data;
+        core.debug(`Processing logs for ${runId} and ${job.id}`);
         const logLines = [];
         if (typeof downloadedLogs === "string") {
             logLines.push(...downloadedLogs.split("\n"));
@@ -307,6 +310,7 @@ async function getLogsForWorkflowRunJobs(octokit, contextRepo, runId, workflowRu
             values: parsedLogLines,
         };
         logData.push(lokiLog);
+        core.debug(`Finished processing logs for ${runId} and ${job.id}`);
     }
     return logData;
 }
