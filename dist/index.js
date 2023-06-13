@@ -212,6 +212,141 @@ const core = __importStar(__nccwpck_require__(42186));
 
 /***/ }),
 
+/***/ 80041:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.exportLogsToLoki = exports.getLogsForWorkflowRunJobs = exports.getWorkflowRunJobsForLogging = void 0;
+const axios_1 = __importDefault(__nccwpck_require__(96545));
+const core = __importStar(__nccwpck_require__(42186));
+async function getWorkflowRunJobsForLogging(octokit, contextRepo, runId) {
+    const jobs = [];
+    const pageSize = 100;
+    for (let page = 1, hasNext = true; hasNext; page++) {
+        const listJobsForWorkflowRunResponse = await octokit.rest.actions.listJobsForWorkflowRun({
+            ...contextRepo,
+            run_id: runId,
+            filter: "latest",
+            page,
+            per_page: pageSize,
+        });
+        jobs.push(...listJobsForWorkflowRunResponse.data.jobs);
+        hasNext = jobs.length < listJobsForWorkflowRunResponse.data.total_count;
+    }
+    return jobs;
+}
+exports.getWorkflowRunJobsForLogging = getWorkflowRunJobsForLogging;
+async function getLogsForWorkflowRunJobs(octokit, contextRepo, runId, workflowRunJobs, traceId) {
+    const logData = [];
+    for (const job of workflowRunJobs.jobs) {
+        const downloadLogsResponse = await octokit.rest.actions.downloadJobLogsForWorkflowRun({
+            ...contextRepo,
+            run_id: runId,
+            job_id: job.id,
+        });
+        console.log(downloadLogsResponse.url);
+        const response = await (0, axios_1.default)({
+            method: "get",
+            url: downloadLogsResponse.url,
+        });
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        const downloadedLogs = response.data;
+        const logLines = [];
+        if (typeof downloadedLogs === "string") {
+            logLines.push(...downloadedLogs.split("\n"));
+            console.log(logLines);
+        }
+        else {
+            core.setFailed(`Error parsing logs response, expected string but got ${typeof downloadedLogs}:`);
+            console.error(downloadedLogs);
+        }
+        const parsedLogLines = [];
+        for (const logLine of logLines) {
+            // Example log: '2023-06-13T19:09:45.4037197Z Waiting for a runner to pick up this job...'
+            // first 28 chars are always the timestamp
+            // then a space
+            // then the rest is the message
+            const timestamp = logLine.substring(0, 28);
+            const message = logLine.substring(29);
+            parsedLogLines.push([timestamp, message]);
+        }
+        const stream = {
+            github_owner: contextRepo.owner,
+            github_repo: contextRepo.repo,
+            github_workflow_id: workflowRunJobs.workflowRun.workflow_id.toString(),
+            github_run_id: workflowRunJobs.workflowRun.id.toString(),
+            github_run_name: workflowRunJobs.workflowRun.name || "",
+            github_job_id: job.id.toString(),
+            github_job_attempt_number: (job.run_attempt && job.run_attempt.toString()) || "",
+            traceId: traceId,
+        };
+        const lokiLog = {
+            stream,
+            values: parsedLogLines,
+        };
+        logData.push(lokiLog);
+    }
+    return logData;
+}
+exports.getLogsForWorkflowRunJobs = getLogsForWorkflowRunJobs;
+function stringToHeader(value) {
+    const pairs = value.split(",");
+    return pairs.reduce((result, item) => {
+        const [key, value] = item.split(": ");
+        if (key && value) {
+            return {
+                ...result,
+                [key.trim()]: value.trim(),
+            };
+        }
+        // istanbul ignore next
+        return result;
+    }, {});
+}
+async function exportLogsToLoki(lokiEndpoint, lokiHeaders, bodies) {
+    for (const requestBody of bodies) {
+        const jsonBody = JSON.stringify(requestBody);
+        const lokiResponse = await axios_1.default.post(lokiEndpoint, jsonBody, {
+            headers: stringToHeader(lokiHeaders),
+        });
+        if (lokiResponse.status != 200) {
+            core.error(`Submitting to loki failed... ${lokiResponse.status} ${lokiResponse.statusText}`);
+            core.setFailed(`Submitting to loki failed... ${lokiResponse.status}`);
+        }
+        else {
+            core.info(`Submitted logs to loki with status code ${lokiResponse.status}`);
+        }
+    }
+}
+exports.exportLogsToLoki = exportLogsToLoki;
+
+
+/***/ }),
+
 /***/ 28209:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
@@ -242,10 +377,13 @@ const github = __importStar(__nccwpck_require__(95438));
 const core = __importStar(__nccwpck_require__(42186));
 const github_1 = __nccwpck_require__(85928);
 const tracing_1 = __nccwpck_require__(36590);
+const logging_1 = __nccwpck_require__(80041);
 async function run() {
     const ghContext = github.context;
     const otlpEndpoint = core.getInput("otlpEndpoint");
     const otlpHeaders = core.getInput("otlpHeaders");
+    const lokiEndpoint = core.getInput("lokiEndpoint");
+    const lokiHeaders = core.getInput("lokiHeaders");
     const otelServiceName = core.getInput("otelServiceName") || process.env.OTEL_SERVICE_NAME || "";
     const runId = parseInt(core.getInput("runId") || `${ghContext.runId}`);
     const ghToken = core.getInput("githubToken") || process.env.GITHUB_TOKEN || "";
@@ -260,6 +398,8 @@ async function run() {
             provider,
             workflowRunJobs,
         });
+        const lokiLogs = await (0, logging_1.getLogsForWorkflowRunJobs)(octokit, ghContext.repo, runId, workflowRunJobs, spanContext.traceId);
+        await (0, logging_1.exportLogsToLoki)(lokiEndpoint, lokiHeaders, lokiLogs);
         core.setOutput("traceId", spanContext.traceId);
     }
     finally {
