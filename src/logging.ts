@@ -96,6 +96,9 @@ export async function getLogsForWorkflowRunJobs(
 
     const parsedLogLines: LogLine[] = [];
     for (const logLine of logLines) {
+      if (logLine === "") {
+        continue;
+      }
       // Example log: '2023-06-13T19:09:45.4037197Z Waiting for a runner to pick up this job...'
       // first 28 chars are always the timestamp
       // then a space
