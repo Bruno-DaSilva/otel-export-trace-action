@@ -285,6 +285,13 @@ async function getLogsForWorkflowRunJobs(octokit, contextRepo, runId, workflowRu
             core.setFailed(`Error parsing logs response, expected string but got ${typeof downloadedLogs}:`);
             console.error(downloadedLogs);
         }
+        const metadata = {
+            github_run_id: workflowRunJobs.workflowRun.id.toString(),
+            github_run_name: workflowRunJobs.workflowRun.name || "",
+            github_job_id: job.id.toString(),
+            github_job_attempt_number: (job.run_attempt && job.run_attempt.toString()) || "",
+            traceId: traceId,
+        };
         const parsedLogLines = [];
         for (const logLine of logLines) {
             // Example log: '2023-06-13T19:09:45.4037197Z Waiting for a runner to pick up this job...'
@@ -293,17 +300,17 @@ async function getLogsForWorkflowRunJobs(octokit, contextRepo, runId, workflowRu
             // then the rest is the message
             const timestamp = logLine.substring(0, 28);
             const message = logLine.substring(29);
-            parsedLogLines.push([timestamp, message]);
+            const metadataMessage = JSON.stringify({
+                ...metadata,
+                msg: message,
+            });
+            parsedLogLines.push([timestamp, metadataMessage]);
         }
         const stream = {
+            env: "github-actions",
             github_owner: contextRepo.owner,
             github_repo: contextRepo.repo,
             github_workflow_id: workflowRunJobs.workflowRun.workflow_id.toString(),
-            github_run_id: workflowRunJobs.workflowRun.id.toString(),
-            github_run_name: workflowRunJobs.workflowRun.name || "",
-            github_job_id: job.id.toString(),
-            github_job_attempt_number: (job.run_attempt && job.run_attempt.toString()) || "",
-            traceId: traceId,
         };
         const lokiLog = {
             stream,
@@ -330,10 +337,12 @@ function stringToHeader(value) {
     }, {});
 }
 async function exportLogsToLoki(lokiEndpoint, lokiHeaders, bodies) {
-    for (const requestBody of bodies) {
+    for (const logBody of bodies) {
+        const requestBody = {
+            streams: [logBody],
+        };
         const jsonBody = JSON.stringify(requestBody);
-        core.debug(`sending log stream ${JSON.stringify(requestBody.stream)}`);
-        core.debug(jsonBody);
+        core.info(`sending log stream ${JSON.stringify(requestBody.streams[0].stream)}`);
         const lokiResponse = await axios_1.default.post(lokiEndpoint, jsonBody, {
             headers: stringToHeader(lokiHeaders),
         });
