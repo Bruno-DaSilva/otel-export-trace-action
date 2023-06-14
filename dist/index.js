@@ -263,69 +263,84 @@ exports.getWorkflowRunJobsForLogging = getWorkflowRunJobsForLogging;
 async function getLogsForWorkflowRunJobs(octokit, contextRepo, runId, workflowRunJobs, traceId) {
     const logData = [];
     for (const job of workflowRunJobs.jobs) {
-        core.debug(`Generating URL for logs on ${runId} and ${job.id}`);
-        const downloadLogsResponse = await octokit.rest.actions.downloadJobLogsForWorkflowRun({
-            ...contextRepo,
-            run_id: runId,
-            job_id: job.id,
-        });
-        core.debug(`Downloadings logs from ${downloadLogsResponse.url}`);
-        const response = await (0, axios_1.default)({
-            method: "get",
-            url: downloadLogsResponse.url,
-        });
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-        const downloadedLogs = response.data;
-        core.debug(`Processing logs for ${runId} and ${job.id}`);
-        const logLines = [];
-        if (typeof downloadedLogs === "string") {
-            logLines.push(...downloadedLogs.split("\n"));
-        }
-        else {
-            core.setFailed(`Error parsing logs response, expected string but got ${typeof downloadedLogs}:`);
-            console.error(downloadedLogs);
-        }
-        const metadata = {
-            github_run_id: workflowRunJobs.workflowRun.id.toString(),
-            github_run_name: workflowRunJobs.workflowRun.name || "",
-            github_job_id: job.id.toString(),
-            github_job_attempt_number: (job.run_attempt && job.run_attempt.toString()) || "",
-            traceId: traceId,
-        };
-        const parsedLogLines = [];
-        for (const logLine of logLines) {
-            if (logLine === "") {
-                continue;
-            }
-            // Example log: '2023-06-13T19:09:45.4037197Z Waiting for a runner to pick up this job...'
-            // first 28 chars are always the timestamp
-            // then a space
-            // then the rest is the message
-            const timestamp = logLine.substring(0, 28);
-            const message = logLine.substring(29);
-            const unixTimestamp = new Date(timestamp).getTime() * 1000 * 1000; // loki expects ts in nanoseconds
-            const metadataMessage = JSON.stringify({
-                ...metadata,
-                msg: message,
-            });
-            parsedLogLines.push([unixTimestamp.toString(), metadataMessage]);
-        }
-        const stream = {
-            env: "github-actions",
-            github_owner: contextRepo.owner,
-            github_repo: contextRepo.repo,
-            github_workflow_id: workflowRunJobs.workflowRun.workflow_id.toString(),
-        };
-        const lokiLog = {
-            stream,
-            values: parsedLogLines,
-        };
+        const logLines = await downloadLogs(octokit, contextRepo, runId, job);
+        const metadata = generateLogMetadata(workflowRunJobs, job, traceId);
+        const parsedLogLines = parseLogLines(logLines, metadata);
+        const lokiLog = generateLokiLogPayloads(contextRepo, workflowRunJobs, parsedLogLines);
         logData.push(lokiLog);
         core.debug(`Finished processing logs for ${runId} and ${job.id}`);
     }
     return logData;
 }
 exports.getLogsForWorkflowRunJobs = getLogsForWorkflowRunJobs;
+async function downloadLogs(octokit, contextRepo, runId, job) {
+    core.debug(`Generating URL for logs on ${runId} and ${job.id}`);
+    const downloadLogsResponse = await octokit.rest.actions.downloadJobLogsForWorkflowRun({
+        ...contextRepo,
+        run_id: runId,
+        job_id: job.id,
+    });
+    core.debug(`Downloadings logs from ${downloadLogsResponse.url}`);
+    const response = await (0, axios_1.default)({
+        method: "get",
+        url: downloadLogsResponse.url,
+    });
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+    const downloadedLogs = response.data;
+    core.debug(`Processing logs for ${runId} and ${job.id}`);
+    const logLines = [];
+    if (typeof downloadedLogs === "string") {
+        logLines.push(...downloadedLogs.split("\n"));
+    }
+    else {
+        core.setFailed(`Error parsing logs response, expected string but got ${typeof downloadedLogs}:`);
+        console.error(downloadedLogs);
+    }
+    return logLines;
+}
+function generateLogMetadata(workflowRunJobs, job, traceId) {
+    return {
+        github_run_id: workflowRunJobs.workflowRun.id.toString(),
+        github_run_name: workflowRunJobs.workflowRun.name || "",
+        github_job_id: job.id.toString(),
+        github_job_attempt_number: (job.run_attempt && job.run_attempt.toString()) || "",
+        traceId: traceId,
+    };
+}
+function parseLogLines(logLines, metadata) {
+    const parsedLogLines = [];
+    for (const logLine of logLines) {
+        if (logLine === "") {
+            continue;
+        }
+        // Example log: '2023-06-13T19:09:45.4037197Z Waiting for a runner to pick up this job...'
+        // first 28 chars are always the timestamp
+        // then a space
+        // then the rest is the message
+        const timestamp = logLine.substring(0, 28);
+        const message = logLine.substring(29);
+        const unixTimestamp = new Date(timestamp).getTime() * 1000 * 1000; // loki expects ts in nanoseconds
+        const metadataMessage = JSON.stringify({
+            ...metadata,
+            msg: message,
+        });
+        parsedLogLines.push([unixTimestamp.toString(), metadataMessage]);
+    }
+    return parsedLogLines;
+}
+function generateLokiLogPayloads(contextRepo, workflowRunJobs, parsedLogLines) {
+    const stream = {
+        env: "github-actions",
+        github_owner: contextRepo.owner,
+        github_repo: contextRepo.repo,
+        github_workflow_id: workflowRunJobs.workflowRun.workflow_id.toString(),
+    };
+    const lokiLog = {
+        stream,
+        values: parsedLogLines,
+    };
+    return lokiLog;
+}
 function stringToHeader(value) {
     const pairs = value.split(",");
     return pairs.reduce((result, item) => {
@@ -605,6 +620,7 @@ async function traceWorkflowRunJob({ parentContext, trace, parentSpan, tracer, j
     const completedTime = new Date(job.completed_at);
     const span = tracer.startSpan(job.name, {
         attributes: {
+            env: "github-actions",
             "github.job.id": job.id,
             "github.job.name": job.name,
             "github.job.run_id": job.run_id,

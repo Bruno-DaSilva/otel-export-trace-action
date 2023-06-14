@@ -188,6 +188,7 @@ async function traceWorkflowRunJob({
     job.name,
     {
       attributes: {
+        env: "github-actions",
         "github.job.id": job.id,
         "github.job.name": job.name,
         "github.job.run_id": job.run_id,
