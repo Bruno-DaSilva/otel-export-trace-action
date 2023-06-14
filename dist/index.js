@@ -332,12 +332,13 @@ function stringToHeader(value) {
 async function exportLogsToLoki(lokiEndpoint, lokiHeaders, bodies) {
     for (const requestBody of bodies) {
         const jsonBody = JSON.stringify(requestBody);
+        core.debug(`sending log stream ${requestBody.stream.toString()}`);
+        core.debug(jsonBody);
         const lokiResponse = await axios_1.default.post(lokiEndpoint, jsonBody, {
             headers: stringToHeader(lokiHeaders),
         });
-        console.log(jsonBody);
         if (lokiResponse.status != 200) {
-            console.error(`Submitting to loki failed... ${lokiResponse.status} ${lokiResponse.statusText}`);
+            console.log(`Submitting to loki failed... ${lokiResponse.status} ${lokiResponse.statusText}`);
             core.setFailed(`Submitting to loki failed... ${lokiResponse.status}`);
         }
         else {

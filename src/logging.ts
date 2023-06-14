@@ -139,12 +139,13 @@ export async function exportLogsToLoki(
   for (const requestBody of bodies) {
     const jsonBody = JSON.stringify(requestBody);
 
+    core.debug(`sending log stream ${requestBody.stream.toString()}`);
+    core.debug(jsonBody);
     const lokiResponse = await axios.post(lokiEndpoint, jsonBody, {
       headers: stringToHeader(lokiHeaders),
     });
-    console.log(jsonBody);
     if (lokiResponse.status != 200) {
-      console.error(
+      console.log(
         `Submitting to loki failed... ${lokiResponse.status} ${lokiResponse.statusText}`
       );
       core.setFailed(`Submitting to loki failed... ${lokiResponse.status}`);
