@@ -157,8 +157,11 @@ export async function exportLogsToLoki(
     core.info(
       `sending log stream ${JSON.stringify(requestBody.streams[0].stream)}`
     );
+    core.debug(`sending log body ${jsonBody}`);
+
     const lokiResponse = await axios.post(lokiEndpoint, jsonBody, {
       headers: stringToHeader(lokiHeaders),
+      validateStatus: () => true,
     });
     if (lokiResponse.status != 204) {
       console.log(
