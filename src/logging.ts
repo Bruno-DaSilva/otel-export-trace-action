@@ -103,11 +103,12 @@ export async function getLogsForWorkflowRunJobs(
       const timestamp = logLine.substring(0, 28);
       const message = logLine.substring(29);
 
+      const unixTimestamp = new Date(timestamp).getTime() * 1000 * 1000; // loki expects ts in nanoseconds
       const metadataMessage = JSON.stringify({
         ...metadata,
         msg: message,
       });
-      parsedLogLines.push([timestamp, metadataMessage]);
+      parsedLogLines.push([unixTimestamp.toString(), metadataMessage]);
     }
 
     const stream: LogStream = {
@@ -166,6 +167,10 @@ export async function exportLogsToLoki(
     if (lokiResponse.status != 204) {
       console.log(
         `Submitting to loki failed... ${lokiResponse.status} ${lokiResponse.statusText}`
+      );
+      console.log(
+        // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+        `Loki response body: ${lokiResponse.data}`
       );
       core.setFailed(`Submitting to loki failed... ${lokiResponse.status}`);
     } else {
