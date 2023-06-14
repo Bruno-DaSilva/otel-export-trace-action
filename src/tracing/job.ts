@@ -73,6 +73,7 @@ export async function traceWorkflowRunJobs({
       `${workflowRunJobs.workflowRun.workflow_id}`,
     {
       attributes: {
+        env: "github-actions",
         "github.workflow_id": workflowRunJobs.workflowRun.workflow_id,
         "github.run_id": workflowRunJobs.workflowRun.id,
         "github.run_number": workflowRunJobs.workflowRun.run_number,
