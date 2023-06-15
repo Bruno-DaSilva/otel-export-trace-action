@@ -16,7 +16,7 @@ This action will export GitHub Workflow telemetry data using OTLP to a configura
 ### On workflow_run Event
 
 ```yaml
-name: OpenTelemetry Export Trace
+name: Export Traces + Logs to Grafana Cloud
 
 on:
   workflow_run:
@@ -24,15 +24,18 @@ on:
     types: [completed]
 
 jobs:
-  otel-export-trace:
-    name: OpenTelemetry Export Trace
+  otel-export-trace-logs:
+    name: OpenTelemetry Export Trace + Logs
     runs-on: ubuntu-latest
     steps:
-      - name: Export Workflow Trace
-        uses: inception-health/otel-export-trace-action@latest
+      - name: Export Workflow Trace + Logs
+        uses: clearbanc/gh-action-trace-exporter@latest
         with:
-          otlpEndpoint: grpc://api.honeycomb.io:443/
+          otlpEndpoint: https://otlp-gateway-prod-us-central-0.grafana.net/otlp/v1/traces
           otlpHeaders: ${{ secrets.OTLP_HEADERS }}
+          lokiEndpoint: https://logs-prod3.grafana.net/loki/api/v1/push
+          lokiHeaders: ${{ secrets.LOKI_HEADERS }}
+          otelServiceName: gh-observability-packages
           githubToken: ${{ secrets.GITHUB_TOKEN }}
           runId: ${{ github.event.workflow_run.id }}
 ```
@@ -40,7 +43,7 @@ jobs:
 ### On Current Workflow
 
 ```yaml
-name: OpenTelemetry Export Trace
+name: OpenTelemetry Export Trace + Logs
 
 on:
   push:
@@ -49,18 +52,22 @@ on:
 jobs:
   build:
     # Run build steps
-  otel-export-trace:
+  otel-export-trace-logs:
     if: always()
-    name: OpenTelemetry Export Trace
+    name: OpenTelemetry Export Trace + Logs
     runs-on: ubuntu-latest
     needs: [build] # must run when all jobs are complete
     steps:
-      - name: Export Workflow Trace
+      - name: Export Workflow Trace + Logs
         uses: inception-health/otel-export-trace-action@latest
         with:
-          otlpEndpoint: grpc://api.honeycomb.io:443/
+          otlpEndpoint: https://otlp-gateway-prod-us-central-0.grafana.net/otlp/v1/traces
           otlpHeaders: ${{ secrets.OTLP_HEADERS }}
+          lokiEndpoint: https://logs-prod3.grafana.net/loki/api/v1/push
+          lokiHeaders: ${{ secrets.LOKI_HEADERS }}
+          otelServiceName: gh-observability-packages
           githubToken: ${{ secrets.GITHUB_TOKEN }}
+          runId: ${{ github.event.workflow_run.id }}
 ```
 
 ### With Junit Tracing
