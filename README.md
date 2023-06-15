@@ -2,6 +2,15 @@
 
 This action will export GitHub Workflow telemetry data using OTLP to a configurable endpoint.
 
+## Building/contributing
+
+1. make changes to files
+2. run `npm run package` to generate dist/index.js and dist/index.js.map
+3. commit your changes + index.\* changes
+4. `git push` your changes, PR + merge if necessary
+5. run a `git tag latest -f` to make a new latest tag
+6. run `git push --tags -f`
+
 ## Usage
 
 ### On workflow_run Event

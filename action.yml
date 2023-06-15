@@ -1,6 +1,6 @@
-name: OpenTelemetry Export Trace
-description: Exports Workflow Run Telemetry Trace over OLTP
-author: Inception Health
+name: OpenTelemetry Export Trace (+ Logs)
+description: "Exports Workflow Run Telemetry Trace over OLTP (+ Logs to Loki). Original @ https://github.com/inception-health/otel-export-trace-action"
+author: Bruno Da Silva
 
 runs:
   using: node16
