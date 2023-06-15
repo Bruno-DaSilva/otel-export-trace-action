@@ -13,6 +13,16 @@ This action will export GitHub Workflow telemetry data using OTLP to a configura
 
 ## Usage
 
+### **_SECRET SETUP_**
+
+You must create two secrets on repos using this action, OTLP_HEADERS and LOKI_HEADERS. They are formatted as a comma separated list of headers, formatted like: `KEY1: VALUE1,KEY2: VALUE2`
+
+For Grafana Cloud, OTLP_HEADERS expects an Authorization header. For example, `Authorization: Basic asdskdflnsdg==`
+
+For Grafana Cloud, LOKI_HEADERS expects an Authorization header AND a Content Type header. For example, `Content-Type: application/json,Authorization: Basic asdgnkjw4reg=`.
+
+Both secrets can be found within the clearbanc "Software Delivary Service Accounts" vault in 1password.
+
 ### On workflow_run Event
 
 ```yaml
